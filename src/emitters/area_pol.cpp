@@ -86,32 +86,12 @@ public:
     Spectrum eval(const SurfaceInteraction3f &si, Mask active) const override {
         MI_MASKED_FUNCTION(ProfilerPhase::EndpointEvaluate, active);
         
-        // si.wi is inverse of outgoing direction
-        // TODO: leonsht
-        // need to align stokes vector in form of muller matrix into 
-        // align frame with incoming ray dir
-        auto depolarized = depolarizer<Spectrum>(m_radiance->eval(si, active));    
+        auto depolarized = depolarizer<Spectrum>(m_radiance->eval(si, active));
         if constexpr (!is_polarized_v<Spectrum>) {
             return depolarized;
         } else {
-            Spectrum tx_ay_mueller = mueller::linear_polarizer(1.f);
-            
             Vector3f forward_world = si.to_world(si.wi);
-            Vector3f forward_local = this->world_transform().inverse() * forward_world;
-
-            Vector3f a_axis_local = Vector3f(0.f, 1.f, 0.f);
-            Vector3f a_axis_world = this->world_transform() * a_axis_local;
-            
-            Vector3f eff_a_axis_world = dr::normalize(
-                a_axis_world - dr::dot(a_axis_world, forward_world) * forward_world
-            );
-            Vector3f eff_t_axis_world = dr::cross(forward_world, eff_a_axis_world);
-            Vector3f stokes_basis_world = mueller::stokes_basis(forward_world);
-
-            Spectrum M = mueller::rotate_mueller_basis_collinear(
-                tx_ay_mueller, forward_world, eff_t_axis_world, stokes_basis_world
-            );
-
+            Spectrum M = compute_polarization_matrix(forward_world);
             return M * depolarized;
         }
     }
@@ -141,24 +121,8 @@ public:
         if constexpr (!is_polarized_v<Spectrum>) {
             return { si.spawn_ray(si.to_world(local)), depolarized_weight };
         } else {
-            Spectrum tx_ay_mueller = mueller::linear_polarizer(1.f);
-            
             Vector3f forward_world = si.to_world(local);
-            Vector3f forward_local = this->world_transform().inverse() * forward_world;
-
-            Vector3f a_axis_local = Vector3f(0.f, 1.f, 0.f);
-            Vector3f a_axis_world = this->world_transform() * a_axis_local;
-            
-            Vector3f eff_a_axis_world = dr::normalize(
-                a_axis_world - dr::dot(a_axis_world, forward_world) * forward_world
-            );
-            Vector3f eff_t_axis_world = dr::cross(forward_world, eff_a_axis_world);
-            Vector3f stokes_basis_world = mueller::stokes_basis(forward_world);
-
-            Spectrum M = mueller::rotate_mueller_basis_collinear(
-                tx_ay_mueller, forward_world, eff_t_axis_world, stokes_basis_world
-            );
-
+            Spectrum M = compute_polarization_matrix(forward_world);
             return { si.spawn_ray(si.to_world(local)), M * depolarized_weight };
         }
     }
@@ -214,30 +178,11 @@ public:
         UnpolarizedSpectrum spec = m_radiance->eval(si, active) / ds.pdf;
         ds.emitter = this;
 
-        // TODO: leonshtalign polarization with outgoing with -si.d ?? 
-        // wi + local shading frame = love
-
         auto depolarized = depolarizer<Spectrum>(spec) & active;
         if constexpr (!is_polarized_v<Spectrum>) {
             return { ds, depolarized };
         } else {
-            Spectrum tx_ay_mueller = mueller::linear_polarizer(1.f);
-            
-            Vector3f forward_world = ds.d;
-            Vector3f forward_local = this->world_transform().inverse() * forward_world;
-
-            Vector3f a_axis_local = Vector3f(0.f, 1.f, 0.f);
-            Vector3f a_axis_world = this->world_transform() * a_axis_local;
-            
-            Vector3f eff_a_axis_world = dr::normalize(
-                a_axis_world - dr::dot(a_axis_world, forward_world) * forward_world
-            );
-            Vector3f eff_t_axis_world = dr::cross(forward_world, eff_a_axis_world);
-            Vector3f stokes_basis_world = mueller::stokes_basis(forward_world);
-
-            Spectrum M = mueller::rotate_mueller_basis_collinear(
-                tx_ay_mueller, forward_world, eff_t_axis_world, stokes_basis_world
-            );
+            Spectrum M = compute_polarization_matrix(ds.d);
             return { ds, M * depolarized };
         }
 
@@ -286,24 +231,7 @@ public:
         if constexpr (!is_polarized_v<Spectrum>) {
             return dr::select(active, depolarized, 0.f);
         } else {
-            Spectrum tx_ay_mueller = mueller::linear_polarizer(1.f);
-            
-            Vector3f forward_world = ds.d;
-            Vector3f forward_local = this->world_transform().inverse() * forward_world;
-
-            Vector3f a_axis_local = Vector3f(0.f, 1.f, 0.f);
-            Vector3f a_axis_world = this->world_transform() * a_axis_local;
-            
-            Vector3f eff_a_axis_world = dr::normalize(
-                a_axis_world - dr::dot(a_axis_world, forward_world) * forward_world
-            );
-            Vector3f eff_t_axis_world = dr::cross(forward_world, eff_a_axis_world);
-            Vector3f stokes_basis_world = mueller::stokes_basis(forward_world);
-
-            Spectrum M = mueller::rotate_mueller_basis_collinear(
-                tx_ay_mueller, forward_world, eff_t_axis_world, stokes_basis_world
-            );
-
+            Spectrum M = compute_polarization_matrix(ds.d);
             return M * depolarized;
         }
     }
@@ -370,6 +298,30 @@ public:
     MI_DECLARE_CLASS(AreaPolLight)
 private:
     ref<Texture> m_radiance;
+    Spectrum compute_polarization_matrix(const Vector3f &ray_direction_world) const {
+        if constexpr (!is_polarized_v<Spectrum>) {
+            return Spectrum(1.f);
+        } else {
+            Spectrum tx_ay_mueller = mueller::linear_polarizer(1.f);
+            
+            Vector3f forward_world = ray_direction_world;
+
+            Vector3f a_axis_local = Vector3f(0.f, 1.f, 0.f);
+            Vector3f a_axis_world = this->world_transform() * a_axis_local;
+            
+            Vector3f eff_a_axis_world = dr::normalize(
+                a_axis_world - dr::dot(a_axis_world, forward_world) * forward_world
+            );
+            Vector3f eff_t_axis_world = dr::cross(forward_world, eff_a_axis_world);
+            Vector3f stokes_basis_world = mueller::stokes_basis(forward_world);
+
+            Spectrum M = mueller::rotate_mueller_basis_collinear(
+                tx_ay_mueller, forward_world, eff_t_axis_world, stokes_basis_world
+            );
+
+            return M;
+        }
+    }
 
     MI_TRAVERSE_CB(Base, m_radiance)
 };
