@@ -106,7 +106,6 @@ public:
                 a_axis_world - dr::dot(a_axis_world, forward_world) * forward_world
             );
             Vector3f eff_t_axis_world = dr::cross(forward_world, eff_a_axis_world);
-            // Vector3f eff_t_axis_local = this->world_transform().inverse() * eff_t_axis_world;
             Vector3f stokes_basis_world = mueller::stokes_basis(forward_world);
 
             Spectrum M = mueller::rotate_mueller_basis_collinear(
@@ -145,17 +144,19 @@ public:
             Spectrum tx_ay_mueller = mueller::linear_polarizer(1.f);
             
             Vector3f forward_world = si.to_world(local);
-            Vector3f a_axis_local = Vector3f(0.f, 1.f, 0.f);
             Vector3f forward_local = this->world_transform().inverse() * forward_world;
+
+            Vector3f a_axis_local = Vector3f(0.f, 1.f, 0.f);
+            Vector3f a_axis_world = this->world_transform() * a_axis_local;
             
-            Vector3f eff_a_axis_local = dr::normalize(
-                a_axis_local - dr::dot(a_axis_local, forward_local) * forward_local
+            Vector3f eff_a_axis_world = dr::normalize(
+                a_axis_world - dr::dot(a_axis_world, forward_world) * forward_world
             );
-            Vector3f eff_t_axis_local = dr::cross(forward_local, eff_a_axis_local);
-            Vector3f stokes_basis_local = mueller::stokes_basis(forward_local);
+            Vector3f eff_t_axis_world = dr::cross(forward_world, eff_a_axis_world);
+            Vector3f stokes_basis_world = mueller::stokes_basis(forward_world);
 
             Spectrum M = mueller::rotate_mueller_basis_collinear(
-                tx_ay_mueller, forward_local, eff_t_axis_local, stokes_basis_local
+                tx_ay_mueller, forward_world, eff_t_axis_world, stokes_basis_world
             );
 
             return { si.spawn_ray(si.to_world(local)), M * depolarized_weight };
@@ -223,17 +224,19 @@ public:
             Spectrum tx_ay_mueller = mueller::linear_polarizer(1.f);
             
             Vector3f forward_world = ds.d;
-            Vector3f a_axis_local = Vector3f(0.f, 1.f, 0.f);
             Vector3f forward_local = this->world_transform().inverse() * forward_world;
+
+            Vector3f a_axis_local = Vector3f(0.f, 1.f, 0.f);
+            Vector3f a_axis_world = this->world_transform() * a_axis_local;
             
-            Vector3f eff_a_axis_local = dr::normalize(
-                a_axis_local - dr::dot(a_axis_local, forward_local) * forward_local
+            Vector3f eff_a_axis_world = dr::normalize(
+                a_axis_world - dr::dot(a_axis_world, forward_world) * forward_world
             );
-            Vector3f eff_t_axis_local = dr::cross(forward_local, eff_a_axis_local);
-            Vector3f stokes_basis_local = mueller::stokes_basis(forward_local);
+            Vector3f eff_t_axis_world = dr::cross(forward_world, eff_a_axis_world);
+            Vector3f stokes_basis_world = mueller::stokes_basis(forward_world);
 
             Spectrum M = mueller::rotate_mueller_basis_collinear(
-                tx_ay_mueller, forward_local, eff_t_axis_local, stokes_basis_local
+                tx_ay_mueller, forward_world, eff_t_axis_world, stokes_basis_world
             );
             return { ds, M * depolarized };
         }
@@ -286,17 +289,19 @@ public:
             Spectrum tx_ay_mueller = mueller::linear_polarizer(1.f);
             
             Vector3f forward_world = ds.d;
-            Vector3f a_axis_local = Vector3f(0.f, 1.f, 0.f);
             Vector3f forward_local = this->world_transform().inverse() * forward_world;
+
+            Vector3f a_axis_local = Vector3f(0.f, 1.f, 0.f);
+            Vector3f a_axis_world = this->world_transform() * a_axis_local;
             
-            Vector3f eff_a_axis_local = dr::normalize(
-                a_axis_local - dr::dot(a_axis_local, forward_local) * forward_local
+            Vector3f eff_a_axis_world = dr::normalize(
+                a_axis_world - dr::dot(a_axis_world, forward_world) * forward_world
             );
-            Vector3f eff_t_axis_local = dr::cross(forward_local, eff_a_axis_local);
-            Vector3f stokes_basis_local = mueller::stokes_basis(forward_local);
+            Vector3f eff_t_axis_world = dr::cross(forward_world, eff_a_axis_world);
+            Vector3f stokes_basis_world = mueller::stokes_basis(forward_world);
 
             Spectrum M = mueller::rotate_mueller_basis_collinear(
-                tx_ay_mueller, forward_local, eff_t_axis_local, stokes_basis_local
+                tx_ay_mueller, forward_world, eff_t_axis_world, stokes_basis_world
             );
 
             return M * depolarized;
