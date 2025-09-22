@@ -95,6 +95,28 @@ template <typename T> auto depolarizer(const T &spectrum = T(1)) {
     }
 }
 
+template <typename T> auto x_polarizer(const T &spectrum = T(1)) {
+    if constexpr (is_polarized_v<T>) {
+        T result = dr::zeros<T>();
+        result(0, 0) = spectrum(0, 0);
+        result(1, 0) = spectrum(0, 0);
+        return result;
+    } else {
+        return spectrum;
+    }
+}
+
+template <typename T> auto y_polarizer(const T &spectrum = T(1)) {
+    if constexpr (is_polarized_v<T>) {
+        T result = dr::zeros<T>();
+        result(0, 0) = spectrum(0, 0);
+        result(1, 0) = -spectrum(0, 0);
+        return result;
+    } else {
+        return spectrum;
+    }
+}
+
 //! @}
 // =======================================================================
 

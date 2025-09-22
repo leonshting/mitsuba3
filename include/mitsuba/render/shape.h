@@ -1021,6 +1021,10 @@ public:
     // Mark that shape as an instance
     void mark_as_instance() { m_is_instance = true; }
 
+    AffineTransform4f world_transform() const {
+        return m_to_world.value();
+    }
+
     /// The \c Scene and \c ShapeGroup class needs access to \c Shape::m_dirty
     friend class Scene<Float, Spectrum>;
     friend class ShapeGroup<Float, Spectrum>;

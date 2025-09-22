@@ -317,7 +317,7 @@ public:
 
 
     /// Return the local space to world space transformation
-    AffineTransform4f world_transform() const {
+    virtual AffineTransform4f world_transform() const {
         return m_to_world.value();
     }
 

@@ -167,12 +167,28 @@ public:
 
         m_eta = int_ior / ext_ior;
 
-        mitsuba::MicrofacetDistribution<ScalarFloat, Spectrum> distr(props);
-        m_type = distr.type();
-        m_sample_visible = distr.sample_visible();
+        // mitsuba::MicrofacetDistribution<ScalarFloat, Spectrum> distr(props);
+        // m_type = distr.type();
+        // m_sample_visible = distr.sample_visible();
+        // m_alpha_u = distr.alpha_u();
+        // m_alpha_v = distr.alpha_v();
 
-        m_alpha_u = distr.alpha_u();
-        m_alpha_v = distr.alpha_v();
+        m_sample_visible = props.get<bool>("sample_visible", true);
+
+        if (props.has_property("distribution")) {
+            std::string distr = string::to_lower(props.get<std::string_view>("distribution"));
+            if (distr == "beckmann")
+                m_type = MicrofacetType::Beckmann;
+            else if (distr == "ggx")
+                m_type = MicrofacetType::GGX;
+            else
+                Throw("Specified an invalid distribution \"%s\", must be "
+                      "\"beckmann\" or \"ggx\"!", distr.c_str());
+        } else {
+            m_type = MicrofacetType::Beckmann;
+        }
+
+        m_alpha_u = m_alpha_v = props.get_unbounded_texture<Texture>("alpha", 0.1f);
 
         m_flags = BSDFFlags::GlossyReflection | BSDFFlags::DiffuseReflection;
         if (dr::all(m_alpha_u != m_alpha_v))
@@ -241,7 +257,10 @@ public:
         bs.eta = 1.f;
 
         if (dr::any_or<true>(sample_specular)) {
-            MicrofacetDistribution distr(m_type, m_alpha_u, m_alpha_v, m_sample_visible);
+            MicrofacetDistribution distr(m_type,
+                                         m_alpha_u->eval_1(si, active),
+                                         m_alpha_v->eval_1(si, active),
+                                         m_sample_visible);
             Normal3f m = std::get<0>(distr.sample(si.wi, sample2));
 
             dr::masked(bs.wo, sample_specular) = reflect(si.wi, m);
@@ -287,7 +306,10 @@ public:
                      wi_hat = ctx.mode == TransportMode::Radiance ? si.wi : wo;
 
             if (has_specular) {
-                MicrofacetDistribution distr(m_type, m_alpha_u, m_alpha_v, m_sample_visible);
+                MicrofacetDistribution distr(m_type,
+                                             m_alpha_u->eval_1(si, active),
+                                             m_alpha_v->eval_1(si, active),
+                                             m_sample_visible);
                 Vector3f H = dr::normalize(wo + si.wi);
                 Float D = distr.eval(H);
 
@@ -370,7 +392,10 @@ public:
             }
         } else {
             if (has_specular) {
-                MicrofacetDistribution distr(m_type, m_alpha_u, m_alpha_v, m_sample_visible);
+                MicrofacetDistribution distr(m_type,
+                                             m_alpha_u->eval_1(si, active),
+                                             m_alpha_v->eval_1(si, active),
+                                             m_sample_visible);
                 Vector3f H = dr::normalize(wo + si.wi);
                 Float D = distr.eval(H);
 
@@ -422,7 +447,10 @@ public:
 
         // Specular component
         Vector3f H = dr::normalize(wo + si.wi);
-        MicrofacetDistribution distr(m_type, m_alpha_u, m_alpha_v, m_sample_visible);
+        MicrofacetDistribution distr(m_type,
+                                     m_alpha_u->eval_1(si, active),
+                                     m_alpha_v->eval_1(si, active),
+                                     m_sample_visible);
 
         Float p_specular;
         if (m_sample_visible)
@@ -464,7 +492,8 @@ private:
     /// Importance sample the distribution of visible normals?
     bool m_sample_visible;
     /// Roughness value
-    Float m_alpha_u, m_alpha_v;
+    // Float m_alpha_u, m_alpha_v;
+    ref<Texture> m_alpha_u, m_alpha_v;
 
     /// Relative refractive index
     Float m_eta;
